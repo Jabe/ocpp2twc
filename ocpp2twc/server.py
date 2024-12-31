@@ -13,6 +13,7 @@ class ChargingSession:
     transaction_id: int
     meter_start: int
     start_time: datetime
+    total_energy_start: float = 0.0  # Store total energy at session start
     session_energy: float = 0.0
 
 class ChargePoint(cp):
@@ -94,26 +95,28 @@ class ChargePoint(cp):
         except ValueError:
             timestamp_dt = datetime.now(timezone.utc)
 
-        # Use timestamp as transaction ID
         self.transaction_id = int(timestamp_dt.timestamp())
 
-        # Check if we have a previous session with same ID
+        # Store current total energy as start point
+        total_energy_start = self.twc.vitals.total_energy_wh
         session_energy = 0.0
+
+        # Check if we have a previous session with same ID
         if self.last_session and self.last_session.id_tag == id_tag:
             logging.info(f"Restoring previous session for {id_tag} with {self.last_session.session_energy}Wh")
             session_energy = self.last_session.session_energy
 
-        # Create new session
         self.last_session = ChargingSession(
             id_tag=id_tag,
             transaction_id=self.transaction_id,
             meter_start=meter_start,
             start_time=timestamp_dt,
+            total_energy_start=total_energy_start,
             session_energy=session_energy
         )
 
         logging.info(f"Transaction started: id={self.transaction_id}, connector={connector_id}, "
-                    f"id_tag={id_tag}, meter_start={meter_start}, restored_energy={session_energy}Wh")
+                    f"id_tag={id_tag}, total_start={total_energy_start}Wh")
 
         return call_result.StartTransactionPayload(
             transaction_id=self.transaction_id,
@@ -159,6 +162,8 @@ class ChargePoint(cp):
                 current_offered = 0
                 power_offered = 0
                 
+                interval_energy_reported = False  # Flag to track if interval energy was reported
+                
                 # Process values
                 for sv in sampled_values:
                     measurand = sv.get('measurand', '')
@@ -181,6 +186,7 @@ class ChargePoint(cp):
                         total_energy = value
                     elif measurand == 'Energy.Active.Import.Interval':
                         session_energy = value
+                        interval_energy_reported = True
                     elif measurand == 'Temperature':
                         temperature = value
 
@@ -191,13 +197,19 @@ class ChargePoint(cp):
                 logging.info(f"Frequency={frequency}Hz, Temperature={temperature}°C")
                 logging.info(f"Energy: Session={session_energy}Wh, Total={total_energy}Wh, Power Offered: {power_offered}W")
 
+                # Only compute session energy if not reported directly
+                if not interval_energy_reported and self.last_session:
+                    session_energy = total_energy - self.last_session.total_energy_start
+                    self.last_session.session_energy = max(0, session_energy)
+                    logging.info(f"Computed session energy: {session_energy}Wh from total={total_energy}Wh - start={self.last_session.total_energy_start}Wh")
+
                 # Update TWC with latest values
                 self.twc.update_from_client(
-                    power=sum(powers.values()),  # Sum of all phase powers
+                    power=sum(powers.values()),
                     currents=currents,
                     voltages=voltages,
                     frequency=frequency,
-                    session_energy=session_energy,
+                    session_energy=self.last_session.session_energy if self.last_session else 0,
                     total_energy=total_energy,
                     pcba_temp_c=temperature,
                     timestamp=timestamp
