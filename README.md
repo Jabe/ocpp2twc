@@ -28,6 +28,21 @@ poetry run python -m ocpp2twc
 
 The server will start on `ws://0.0.0.0:9000` and accept OCPP 1.6 connections.
 
+## Docker Compose
+
+Create a `docker-compose.yml`:
+
+```yaml
+version: '3'
+services:
+  ocpp2twc:
+    image: ghcr.io/jabe/ocpp2twc:main
+    ports:
+      - "9000:9000"
+      - "80:8080"
+    restart: unless-stopped
+```
+
 ## Development in VSCode
 
 1. Install the Python extension for VSCode
