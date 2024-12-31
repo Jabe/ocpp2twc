@@ -1,0 +1,13 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "OCPP2TWC Bridge",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "ocpp2twc",
+            "console": "integratedTerminal",
+            "justMyCode": true
+        }
+    ]
+}
