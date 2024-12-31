@@ -2,15 +2,8 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# Install build dependencies
-RUN apt-get update && apt-get install -y \
-    gcc \
-    python3-dev \
-    libffi-dev \
-    && rm -rf /var/lib/apt/lists/*
-
-# Install Poetry
-RUN pip install poetry
+# Install Poetry using binary distribution
+RUN pip install --only-binary :all: poetry
 
 # Copy project files
 COPY pyproject.toml poetry.lock ./
