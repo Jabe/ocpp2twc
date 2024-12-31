@@ -13,9 +13,6 @@ dist/
 build/
 *.egg-info/
 
-# Poetry
-poetry.lock
-
 # IDE
 .idea/
 .vscode/
