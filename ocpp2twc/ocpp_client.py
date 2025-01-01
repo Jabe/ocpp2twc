@@ -32,6 +32,7 @@ class SimulatedChargePoint(cp):
         self.authorized = False
         self.transaction_id = None
         self.last_transaction_id = None  # Keep track of last transaction ID
+        self.temperature = 18.0  # Add fixed temperature in °C
 
     def set_enabled(self, enabled: bool):
         """Update enabled state and handle EVSE suspension"""
@@ -210,6 +211,12 @@ class SimulatedChargePoint(cp):
                     "value": str(round(self.session_energy, 2)),
                     "measurand": "Energy.Active.Import.Interval",
                     "unit": "Wh"
+                },
+                # Add temperature measurement
+                {
+                    "value": str(self.temperature),
+                    "measurand": "Temperature",
+                    "unit": "Celsius"
                 }
             ]
 
