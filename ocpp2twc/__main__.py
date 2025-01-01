@@ -11,7 +11,13 @@ logging.basicConfig(level=logging.DEBUG)  # Change to DEBUG level
 async def on_connect(websocket: WebSocketServerProtocol, path: str, twc: TWCSimulator):
     """Handle incoming WebSocket connection"""
     try:
-        cp = ChargePoint("TWC3_CHARGER", websocket, twc)
+        # Extract serial number from path (remove leading slash)
+        serial = path.lstrip('/')
+        if not serial:
+            logging.error("No serial number provided in path")
+            return
+            
+        cp = ChargePoint(serial, websocket, twc)
         await cp.start()
     except Exception as e:
         logging.error(f"Error in OCPP connection: {e}")

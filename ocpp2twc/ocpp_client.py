@@ -279,7 +279,7 @@ class SimulatedChargePoint(cp):
 async def main():
     try:
         async with websockets.connect(
-            "ws://0.0.0.0:9000",
+            "ws://0.0.0.0:9000/4815162342",
             subprotocols=["ocpp1.6"]
         ) as ws:
             cp = SimulatedChargePoint("TWC3_SIM", ws)
