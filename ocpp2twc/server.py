@@ -142,15 +142,7 @@ class ChargePoint(cp):
             for reading in meter_value:
                 sampled_values = reading.get('sampled_value', [])
                 timestamp = reading.get('timestamp')
-                
-                # Log raw meter values
-                logging.debug(f"OCPP MeterValues: connector={connector_id}, timestamp={timestamp}")
-                for sv in sampled_values:
-                    measurand = sv.get('measurand', '')
-                    value = sv.get('value', '0')
-                    unit = sv.get('unit', '')
-                    phase = sv.get('phase', '')
-                    logging.debug(f"  {measurand}: {value} {unit} {f'(phase {phase})' if phase else ''}")
+                transaction_id = kwargs.get('transaction_id')
                 
                 currents = {'L1': 0, 'L2': 0, 'L3': 0, 'N': 0}
                 voltages = {'L1': 0, 'L2': 0, 'L3': 0, 'N': 0}
@@ -196,6 +188,24 @@ class ChargePoint(cp):
                 logging.info(f"Voltage: (L1={voltages['L1']}V, L2={voltages['L2']}V, L3={voltages['L3']}V)")
                 logging.info(f"Frequency={frequency}Hz, Temperature={temperature}°C")
                 logging.info(f"Energy: Session={session_energy}Wh, Total={total_energy}Wh, Power Offered: {power_offered}W")
+
+                # Initialize a new session if none exists but we have a transaction
+                if not self.last_session and transaction_id:
+                    try:
+                        timestamp_dt = datetime.fromisoformat(timestamp)
+                    except ValueError:
+                        timestamp_dt = datetime.now(timezone.utc)
+                    
+                    self.transaction_id = transaction_id
+                    self.last_session = ChargingSession(
+                        id_tag="AUTO_RESTORED",
+                        transaction_id=transaction_id,
+                        meter_start=int(total_energy),
+                        start_time=timestamp_dt,
+                        total_energy_start=total_energy,
+                        session_energy=0.0
+                    )
+                    logging.info(f"Restored session state from meter values. Transaction ID: {transaction_id}, starting at {total_energy}Wh")
 
                 # Only compute session energy if not reported directly
                 if not interval_energy_reported and self.last_session:
